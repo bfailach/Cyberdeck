@@ -1,0 +1,24 @@
+{
+  "name": "cyberdeck",
+  "version": "0.1.0",
+  "description": "Breach Protocol practice game inspired by Cyberpunk 2077",
+  "type": "module",
+  "main": "electron/main.cjs",
+  "author": "Bryan Failach",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node --test test/*.test.js",
+    "app": "vite build && electron ."
+  },
+  "dependencies": {
+    "@fontsource/rajdhani": "^5.0.0"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "vite": "^6.0.0"
+  }
+}
