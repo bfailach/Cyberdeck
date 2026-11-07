@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cyberdeck — Breach Protocol Training</title>
+</head>
+<body>
+  <div id="viewport">
+    <div id="stage">
+      <div class="bg-codes" id="bgCodes"></div>
+      <div class="band"></div>
+
+      <header class="topbar">
+        <div class="brand">CYBER<span class="brand-bar"></span>DECK</div>
+        <div class="dotgrid"></div>
+        <div class="banner">
+          <span class="banner-small">ONLY CERTIFIED NETRUNNERS ARE ALLOWED TO MANIPULATE, ACCESS OR DISABLE THIS DEVICE.</span>
+          <span class="banner-title">BREACH PROTOCOL INTERFACE</span>
+          <span class="banner-id" id="bannerId">CDK-0000-0000-0000</span>
+        </div>
+        <div class="banner-tail"></div>
+      </header>
+
+      <div class="frame frame-outer"></div>
+      <div class="frame frame-inner"></div>
+
+      <!-- Timer -->
+      <section class="timer-panel">
+        <div class="tiny-text">ONLY CODE CERTIFIED AND DEEP STK CLASS OFFICERS ARE ALLOWED TO MANIPULATE THIS DEVICE.</div>
+        <div class="timer-label">BREACH TIME REMAINING</div>
+        <div class="timer-box" id="timerBox">60.00</div>
+        <div class="timer-bar"><div class="timer-fill" id="timerFill"></div></div>
+      </section>
+
+      <!-- Buffer -->
+      <section class="buffer-panel">
+        <div class="tiny-text barcode">▮▯▮▮▯▯▮▯▮▮▮▯▮▯▯▮▮▯▮▯▮▮▯▯▮▯▮▮▮▯</div>
+        <div class="buffer-title">BUFFER</div>
+        <div class="buffer-box" id="bufferBox"></div>
+      </section>
+
+      <!-- Code matrix -->
+      <section class="matrix-panel" id="matrixPanel">
+        <div class="panel-head">
+          <svg class="head-icon" viewBox="0 0 24 24"><path d="M3 4h6v6H3zM15 4h6v6h-6zM9 14h6v6H9zM3 14l4 6M21 14l-4 6" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+          <span class="head-title" id="matrixTitle">CODE MATRIX</span>
+          <span class="head-meta">LEVEL <b id="levelLabel">01</b><br/>SEED <b id="seedLabel">0</b></span>
+        </div>
+        <div class="matrix" id="matrix"></div>
+        <div class="terminal hidden" id="terminal"></div>
+      </section>
+      <div class="matrix-foot" id="matrixFoot">
+        <div class="foot-logo">▚▞<br/>PROTOCOL<br/>TRN-01</div>
+        <div class="foot-nums">2.24645 0 . 3 4 8 0<br/>0.45654 0 . 1 4 0 0<br/>0.99743 0 . 4 4</div>
+        <div class="foot-nums">02:23 1.93743 0 . 4 4 3 5<br/>02:35 4.99743 0 . 0 0 0 0<br/>02:50</div>
+      </div>
+
+      <!-- Daemons -->
+      <section class="daemon-panel" id="daemonPanel">
+        <div class="panel-head dark">
+          <svg class="head-icon" viewBox="0 0 24 24"><circle cx="7" cy="14" r="4" fill="currentColor"/><circle cx="17" cy="14" r="4" fill="currentColor"/></svg>
+          <span class="head-title">SEQUENCE REQUIRED TO UPLOAD</span>
+        </div>
+        <div class="daemons" id="daemons"></div>
+      </section>
+
+      <!-- Assists + score panel -->
+      <section class="assist-panel" id="assistPanel"></section>
+      <section class="score-panel hidden" id="scorePanel"></section>
+
+      <div class="exit-wrap hidden" id="exitWrap"></div>
+
+      <footer class="prompts" id="prompts"></footer>
+
+      <!-- Menu overlay -->
+      <div class="overlay" id="menu">
+        <div class="menu-box">
+          <div class="menu-tag">// NETRUNNER TRAINING MODULE</div>
+          <h1>BREACH PROTOCOL</h1>
+          <div class="menu-sub">Select a level. Upload every daemon to unlock the next one.</div>
+          <div class="level-grid" id="levelGrid"></div>
+          <div class="menu-detail" id="menuDetail"></div>
+          <div class="menu-actions">
+            <button class="cp-btn" id="startBtn">INITIATE BREACH <kbd>ENTER</kbd></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="scanlines"></div>
+      <div class="vignette"></div>
+    </div>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
