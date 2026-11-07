@@ -5,6 +5,7 @@ import { solve } from '../src/engine/solver.js';
 import { generatePuzzle } from '../src/engine/generator.js';
 import { Breach } from '../src/engine/breach.js';
 import { MAX_LEVEL } from '../src/engine/levels.js';
+import { computeMods, pointsAvailable, pointsSpent } from '../src/engine/perks.js';
 
 // Reference puzzle from an in-game screenshot.
 const reference = {
@@ -74,8 +75,14 @@ test('same seed gives the same puzzle', () => {
   assert.deepEqual(generatePuzzle(3, 42).grid, generatePuzzle(3, 42).grid);
 });
 
-test('timer only starts after the first pick; freeze pauses it', () => {
+test('timer runs immediately by default', () => {
   const b = new Breach(reference);
+  b.tick(3);
+  assert.equal(b.timeLeft, 60);
+});
+
+test('first-pick timer mode waits for the first pick; freeze pauses it', () => {
+  const b = new Breach(reference, { timerMode: 'firstPick' });
   b.tick(10);
   assert.equal(b.timeLeft, 63);
   b.pick(0, 4);
@@ -91,4 +98,32 @@ test('hint points at the next optimal cell; assists reduce score', () => {
   const h = b.useHint();
   assert.ok(h && h.r === 0);
   assert.equal(b.assistsUsed, 1);
+});
+
+test('perks change time, buffer, assists and scoring', () => {
+  const mods = computeMods({ breach_time: 2, buffer: 1, hint_cache: 1, cryo: 2, light_touch: 1, datamine: 3 });
+  const b = new Breach(reference, { mods });
+  assert.equal(b.timeLeft, 73);
+  assert.equal(b.puzzle.bufferSize, 7);
+  assert.equal(b.assists.hint, 4);
+  assert.equal(b.assists.freeze, 3);
+  b.useFreeze();
+  assert.equal(b.frozenFor, 8);
+  for (const [r, c] of [[0, 4], [3, 4], [3, 2], [0, 2], [0, 1], [2, 1]]) b.pick(r, c);
+  b.finish('complete');
+  assert.equal(b.result.daemonPoints, 780); // 600 * 1.3
+  assert.equal(b.result.multiplier, 0.95);
+});
+
+test('points come from best stars and are spent on tiers', () => {
+  const save = { best: { 1: { stars: 3 }, 2: { stars: 2 } }, perks: { breach_time: 2, buffer: 1 } };
+  assert.equal(pointsSpent(save.perks), 6);
+  assert.equal(pointsAvailable(save), -1);
+});
+
+test('scanner marks cells that advance a daemon', () => {
+  const b = new Breach(reference);
+  const cells = b.advancingCells();
+  // top row: needs 55 (V1), 1C (V2), BD (V3) -> BD at c0, c3, c4 and 1C at c2
+  assert.deepEqual(cells.map((p) => p.c).sort(), [0, 2, 3, 4]);
 });

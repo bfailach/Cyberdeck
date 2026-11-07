@@ -16,7 +16,7 @@ npm test        # engine tests
 - Your first pick must come from the **top row**. After that, picks alternate between the **column** and the **row** of your last pick.
 - Each pick adds its code to the **buffer**. A daemon uploads when its whole sequence appears in the buffer as consecutive codes.
 - A daemon fails once it can no longer fit in the remaining buffer slots.
-- The timer starts with your first pick.
+- The timer runs as soon as the breach opens. Settings can switch it to the patch 2.0 behaviour, where it waits for your first pick.
 
 ## Controls
 | Key | Action |
@@ -27,6 +27,7 @@ npm test        # engine tests
 | Esc | Close the breach (counts as a fail) / back to menu |
 | R / N | Retry the same puzzle / new puzzle (result screen) |
 | M | Sound on/off |
+| 1–3 (assists), R (refund perks) | see the on-screen prompts |
 | F11 | Fullscreen (desktop app) |
 
 Mouse works too: hover to preview, click to select.
@@ -44,19 +45,35 @@ Mouse works too: hover to preview, click to select.
 Stars: ★ at least one daemon, ★★ all daemons, ★★★ all daemons on the optimal path with no assists.
 Uploading every daemon unlocks the next level.
 
+## Menus
+Main menu: **Continue** (your highest unlocked level), **Select level**, **Skill tree**, **Settings** (music and effects volume, timer mode, reset progress) and **Quit** (desktop app only).
+
+## Skill tree
+Each star you earn on a level (your best per level) is worth 1 perk point. Spend points in three branches:
+
+| Branch | Perks |
+|---|---|
+| Breach | Extended Uplink (+5/+10/+15 s), Buffer Expansion (+1/+2 slots), Overclocked Uplink (time bonus ×1.5) |
+| Daemons | Datamine Mastery (daemon points +10/20/30%), Clean Execution (optimal bonus 300), Sequence Scanner (marks codes that advance a daemon) |
+| Assists | Hint Cache (+1/+2 hints), Rollback Buffer (+1/+2 undos), Cryo Loop (+1 freeze, 8 s freeze), Light Touch (assists cost 5%) |
+
+Press **R** in the tree to refund every point and rebuild your perks.
+
+## Music
+"Neon Uplink" is an original synthwave track written for this game. It is generated live in code (WebAudio), so there are no audio files and no licensing to worry about. It is muffled in the menus and opens up during a breach.
+
 ## Levels
 20 levels. Difficulty rises in four ways: the matrix grows (5×5 → 6×6 → 7×7), the timer and buffer slack shrink, daemons get longer and more numerous, and fewer assists are available.
 Every puzzle is generated so that all daemons can be uploaded. A solver checks each one and records the shortest solution.
 
 ## Project layout
 ```
-src/engine/   rules, generator, solver, scoring, level curve (pure JS, tested with node --test)
-src/ui/       styles and synthesized audio
+src/engine/   rules, generator, solver, scoring, perks, level curve (pure JS, tested with node --test)
+src/ui/       styles, sound effects and the soundtrack sequencer (music.js)
 src/main.js   screens, input, game loop
 electron/     desktop window
 ```
 
 ## Roadmap
-- Netrunner skill tree (earn points from scores and spend them on perks)
 - More daemons and perk effects
 - Windows/macOS/Linux installers (electron-builder)
