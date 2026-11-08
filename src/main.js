@@ -10,7 +10,8 @@ import { levelConfig, MAX_LEVEL } from './engine/levels.js';
 import { randomSeed } from './engine/rng.js';
 import { BRANCHES, computeMods, nextCost, perkById, pointsAvailable, pointsEarned } from './engine/perks.js';
 import { loadSave, recordResult, resetProgress, writeSave } from './storage.js';
-import { sfx, startMusic, setMusicMode, setVolumes, toggleMute, isMuted } from './ui/audio.js';
+import { sfx, startMusic, setMusicMode, setVolumes, toggleMute, isMuted, setCustomMusic, useCustomMusic } from './ui/audio.js';
+import { saveCustomTrack, loadCustomTrack, deleteCustomTrack, creditFor } from './musicStore.js';
 
 const PITCH = 53.5; // distance between matrix cells (matches the in-game layout at 1600x900)
 const SLOT = 35; // distance between daemon code columns
@@ -40,6 +41,7 @@ const app = {
   lastSecond: null,
   lastFrame: 0,
   resultInfo: null,
+  customTrack: null, // { name } of a music file the player loaded
 };
 
 setVolumes(app.save.settings);
@@ -73,14 +75,15 @@ window.addEventListener('pointerdown', unlockAudio, { once: true });
 window.addEventListener('keydown', unlockAudio, { once: true });
 
 // ---------------------------------------------------------------- menus
+const MENU_SCREENS = ['main', 'levels', 'settings', 'credits'];
 function showScreen(mode) {
   app.mode = mode;
   app.sel = 0;
   app.resetArmed = false;
   if (mode === 'levels') app.sel = Math.min(app.save.unlocked, MAX_LEVEL) - 1;
-  $('menu').classList.toggle('hidden', !['main', 'levels', 'settings'].includes(mode));
+  $('menu').classList.toggle('hidden', !MENU_SCREENS.includes(mode));
   $('skills').classList.toggle('hidden', mode !== 'skills');
-  $('menuBg').classList.toggle('hidden', !['main', 'levels', 'settings'].includes(mode));
+  $('menuBg').classList.toggle('hidden', !MENU_SCREENS.includes(mode));
   $('menu').classList.toggle('on-main', mode === 'main');
   $('prompts').classList.toggle('hidden', mode === 'skills' || mode === 'main');
   setMusicMode('menu');
@@ -93,6 +96,7 @@ function renderScreen() {
   else if (app.mode === 'levels') renderLevels();
   else if (app.mode === 'settings') renderSettings();
   else if (app.mode === 'skills') renderSkills();
+  else if (app.mode === 'credits') renderCredits();
 }
 
 function mainItems() {
@@ -103,6 +107,7 @@ function mainItems() {
     { label: 'SELECT LEVEL', sub: `${Object.keys(app.save.best).length}/${MAX_LEVEL} PLAYED`, act: () => showScreen('levels') },
     { label: 'SKILL TREE', sub: pts > 0 ? `${pts} POINT${pts > 1 ? 'S' : ''} AVAILABLE` : '', badge: pts > 0, act: () => showScreen('skills') },
     { label: 'SETTINGS', sub: '', act: () => showScreen('settings') },
+    { label: 'CREDITS', sub: '', act: () => showScreen('credits') },
   ];
   if (IS_DESKTOP) items.push({ label: 'QUIT', sub: '', act: () => window.close() });
   return items;
@@ -137,8 +142,8 @@ function renderMain() {
     const sel = i === app.sel;
     const row = el('div', `mm-item${sel ? ' sel' : ''}`,
       `<span class="mm-label">${it.label}</span>` +
-      (sel ? `<span class="mm-chip"><b></b></span><span class="mm-sub${it.badge ? ' badge' : ''}">${it.sub || ''}</span><span class="mm-glyph">▚▞<br/>▞▚</span>` : ''));
-    row.addEventListener('mouseenter', () => { if (app.sel !== i) { app.sel = i; sfx.hover(); renderMain(); } });
+      `<span class="mm-chip"><b></b></span><span class="mm-sub${it.badge ? ' badge' : ''}">${it.sub || ''}</span><span class="mm-glyph">▚▞<br/>▞▚</span>`);
+    row.addEventListener('mouseenter', () => { if (app.sel !== i) { app.sel = i; sfx.hover(); markSel(list, '.mm-item', i); } });
     row.addEventListener('click', () => { sfx.select(); it.act(); });
     list.append(row);
   });
@@ -184,10 +189,18 @@ function renderLevels() {
     const stars = best ? '★'.repeat(best.stars) + `<span class="dim">${'★'.repeat(3 - best.stars)}</span>` : locked ? 'LOCKED' : '<span class="dim">★★★</span>';
     const cell = el('div', `lvl${locked ? ' locked' : ''}${app.sel === L - 1 ? ' sel' : ''}`,
       `${String(L).padStart(2, '0')}<small>${stars}</small>`);
-    cell.addEventListener('mouseenter', () => { if (!locked && app.sel !== L - 1) { app.sel = L - 1; renderLevels(); sfx.hover(); } });
+    cell.addEventListener('mouseenter', () => {
+      if (!locked && app.sel !== L - 1) { app.sel = L - 1; markSel(grid, '.lvl', L - 1); renderLevelDetail(); sfx.hover(); }
+    });
     cell.addEventListener('click', () => { if (!locked) startLevel(L); });
     grid.append(cell);
   }
+  renderLevelDetail();
+  $('startBtn').addEventListener('click', () => startLevel(app.sel + 1));
+  $('backBtn').addEventListener('click', () => showScreen('main'));
+}
+
+function renderLevelDetail() {
   const L = app.sel + 1;
   const c = levelConfig(L);
   const m = computeMods(app.save.perks);
@@ -198,8 +211,6 @@ function renderLevels() {
     `daemons <b>${c.daemons.map((d) => d.length).join('/')}</b><br/>` +
     `Assists: hint <b>${c.assists.hint}</b>${plus(m.extraHint)} · undo <b>${c.assists.undo}</b>${plus(m.extraUndo)} · freeze <b>${c.assists.freeze}</b>${plus(m.extraFreeze)}` +
     (best ? ` &nbsp;|&nbsp; best score <b>${best.score}</b>` : '');
-  $('startBtn').addEventListener('click', () => startLevel(L));
-  $('backBtn').addEventListener('click', () => showScreen('main'));
 }
 
 function settingsRows() {
@@ -208,6 +219,22 @@ function settingsRows() {
   return [
     { label: 'MUSIC VOLUME', value: bar(s.music), adjust: (d) => { s.music = clamp(s.music + d, 0, 10); } },
     { label: 'EFFECTS VOLUME', value: bar(s.sfx), adjust: (d) => { s.sfx = clamp(s.sfx + d, 0, 10); sfx.select(); } },
+    {
+      label: 'SOUNDTRACK',
+      value: s.musicSource === 'custom' && app.customTrack
+        ? `◂ YOUR FILE: ${escapeHtml(shorten(app.customTrack.name, 34))} ▸` : '◂ NEON UPLINK (ORIGINAL) ▸',
+      adjust: () => {
+        if (!app.customTrack) { pickMusicFile(); return; }
+        s.musicSource = s.musicSource === 'custom' ? 'original' : 'custom';
+        useCustomMusic(s.musicSource === 'custom');
+      },
+    },
+    {
+      label: 'LOAD MUSIC FILE',
+      value: app.customTrack ? 'ENTER TO REPLACE · DEL TO REMOVE' : 'ENTER — MP3 / OGG / WAV FROM YOUR PC',
+      act: pickMusicFile,
+      remove: removeMusicFile,
+    },
     {
       label: 'BREACH TIMER',
       value: s.timerMode === 'immediate' ? '◂ STARTS IMMEDIATELY ▸' : '◂ STARTS ON FIRST PICK (PATCH 2.0) ▸',
@@ -232,7 +259,7 @@ function renderSettings() {
   const list = $('setList');
   settingsRows().forEach((r, i) => {
     const row = el('div', `set-row${i === app.sel ? ' sel' : ''}`, `<span>${r.label}</span><span class="set-val">${r.value}</span>`);
-    row.addEventListener('mouseenter', () => { if (app.sel !== i) { app.sel = i; sfx.hover(); renderSettings(); } });
+    row.addEventListener('mouseenter', () => { if (app.sel !== i) { app.sel = i; sfx.hover(); markSel(list, '.set-row', i); } });
     row.addEventListener('click', (e) => {
       if (r.adjust) {
         const rect = row.getBoundingClientRect();
@@ -245,12 +272,75 @@ function renderSettings() {
   });
 }
 
+const escapeHtml = (t) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const shorten = (t, n) => (t.length > n ? `${t.slice(0, n - 1)}…` : t);
+
+function pickMusicFile() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'audio/*,.mp3,.ogg,.wav,.m4a,.flac';
+  input.addEventListener('change', async () => {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    try { await saveCustomTrack(file); } catch { /* still usable this session */ }
+    setCustomMusic(file);
+    app.customTrack = { name: file.name };
+    app.save.settings.musicSource = 'custom';
+    commitSettings();
+    startMusic();
+    useCustomMusic(true);
+    sfx.buy();
+    if (app.mode === 'settings') renderSettings();
+  });
+  input.click();
+}
+
+async function removeMusicFile() {
+  if (!app.customTrack) return;
+  try { await deleteCustomTrack(); } catch { /* ignore */ }
+  setCustomMusic(null);
+  app.customTrack = null;
+  app.save.settings.musicSource = 'original';
+  commitSettings();
+  useCustomMusic(false);
+  sfx.daemonFail();
+  if (app.mode === 'settings') renderSettings();
+}
+
+function renderCredits() {
+  const host = $('menuContent');
+  host.className = 'menu-wrap';
+  const custom = app.customTrack && app.save.settings.musicSource === 'custom';
+  host.innerHTML = `
+    <div class="menu-box credits-box">
+      <div class="menu-tag">// CREDITS</div>
+      <h1>CYBERDECK</h1>
+      <div class="cr-sub">Breach Protocol Training · v${VERSION}</div>
+      <div class="cr-block"><span>CREATED BY</span><b>Bryan Failach</b></div>
+      <div class="cr-block"><span>MUSIC</span>
+        <b>"Neon Uplink" — original track made for Cyberdeck${custom ? ' (not playing)' : ''}</b>
+        ${app.customTrack ? `<b class="cr-custom">${escapeHtml(creditFor(app.customTrack.name))}${custom ? '' : ' (not playing)'}</b>
+        <small>Played from a file on this computer, chosen by the player. All rights belong to their respective owners.</small>` : ''}
+      </div>
+      <div class="cr-block"><span>FONT</span><b>Rajdhani — Indian Type Foundry (SIL Open Font License)</b></div>
+      <div class="cr-legal">Fan-made, non-commercial practice tool inspired by the Breach Protocol minigame in Cyberpunk 2077.
+        Not affiliated with or endorsed by CD PROJEKT RED. Cyberpunk 2077 is a trademark of CD PROJEKT S.A.</div>
+      <div class="menu-actions"><button class="cp-btn" id="crBack">BACK <kbd>ESC</kbd></button></div>
+    </div>`;
+  $('crBack').addEventListener('click', () => showScreen('main'));
+}
+
 function commitSettings() {
   writeSave(app.save);
   setVolumes(app.save.settings);
 }
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+/** Marks one element as selected without rebuilding the DOM (rebuilding under the cursor eats clicks). */
+function markSel(container, selector, idx, cls = 'sel') {
+  container.querySelectorAll(selector).forEach((n, j) => n.classList.toggle(cls, j === idx));
+}
 
 // ---------------------------------------------------------------- skill tree
 function skillGrid() {
@@ -289,10 +379,6 @@ function renderSkills() {
       <div class="sk-cards">${cards}</div></div>`;
   });
 
-  const p = perkById(selId);
-  const owned = perks[selId] || 0;
-  const tierList = p.tiers.map((t, i) =>
-    `<li class="${i < owned ? 'have' : i === owned ? 'next' : ''}">${i < owned ? '✓' : `${t.cost} PT`} &nbsp; ${t.text}</li>`).join('');
 
   host.innerHTML = `
     <div class="sk-top">
@@ -304,19 +390,28 @@ function renderSkills() {
     <div class="sk-title"><span>⊕</span> NETRUNNER PERKS</div>
     <div class="sk-head"><span>PERK BRANCH</span><span>PERKS</span></div>
     <div class="sk-rows">${rows}</div>
-    <div class="sk-detail">
-      <div class="sk-detail-name">${p.name.toUpperCase()}</div>
-      <ul>${tierList}</ul>
-    </div>
+    <div class="sk-detail" id="skDetail"></div>
     <div class="sk-prompts">
       <span><kbd>ENTER</kbd> UNLOCK</span><span><kbd>R</kbd> REFUND ALL</span><span><kbd>ESC</kbd> BACK</span>
     </div>`;
 
+  renderSkillDetail();
   host.querySelectorAll('.perk').forEach((card) => {
     const idx = flat.indexOf(card.dataset.id);
-    card.addEventListener('mouseenter', () => { if (app.sel !== idx) { app.sel = idx; sfx.hover(); renderSkills(); } });
+    card.addEventListener('mouseenter', () => {
+      if (app.sel !== idx) { app.sel = idx; sfx.hover(); markSel(host, '.perk', idx); renderSkillDetail(); }
+    });
     card.addEventListener('click', () => { app.sel = idx; buyPerk(); });
   });
+}
+
+function renderSkillDetail() {
+  const id = skillGrid().flat()[app.sel];
+  const p = perkById(id);
+  const owned = app.save.perks[id] || 0;
+  const tierList = p.tiers.map((t, i) =>
+    `<li class="${i < owned ? 'have' : i === owned ? 'next' : ''}">${i < owned ? '✓' : `${t.cost} PT`} &nbsp; ${t.text}</li>`).join('');
+  $('skDetail').innerHTML = `<div class="sk-detail-name">${p.name.toUpperCase()}</div><ul>${tierList}</ul>`;
 }
 
 function buyPerk() {
@@ -714,7 +809,7 @@ function renderExitButtons() {
   btns.forEach((bt, i) => {
     const e = el('button', `cp-btn${bt.green ? ' green' : ''}${i === app.resultFocus ? ' focus' : ''}`, bt.label);
     if (bt.disabled) e.disabled = true;
-    e.addEventListener('mouseenter', () => { app.resultFocus = i; renderExitButtons(); });
+    e.addEventListener('mouseenter', () => { if (app.resultFocus !== i) { app.resultFocus = i; markSel(host, '.cp-btn', i, 'focus'); } });
     e.addEventListener('click', bt.act);
     host.append(e);
   });
@@ -757,9 +852,14 @@ window.addEventListener('keydown', (e) => {
       if (isUp(k) || isDown(k)) { app.sel = (app.sel + (isUp(k) ? -1 : 1) + rows.length) % rows.length; app.resetArmed = false; sfx.hover(); }
       else if ((isLeft(k) || isRight(k)) && rows[app.sel].adjust) { rows[app.sel].adjust(isLeft(k) ? -1 : 1); commitSettings(); }
       else if (isOk(k)) { if (rows[app.sel].act) rows[app.sel].act(); else { rows[app.sel].adjust(1); commitSettings(); } }
+      else if ((k === 'Delete' || k === 'Backspace') && rows[app.sel].remove) { rows[app.sel].remove(); return; }
       else if (k === 'Escape' || k === 'Backspace') { showScreen('main'); return; }
       else return;
       if (app.mode === 'settings') renderSettings();
+      return;
+    }
+    case 'credits': {
+      if (k === 'Escape' || k === 'Backspace' || isOk(k)) showScreen('main');
       return;
     }
     case 'skills': {
@@ -831,6 +931,14 @@ layoutPanels();
 renderAll();
 showScreen('main');
 requestAnimationFrame(frame);
+
+loadCustomTrack().then((rec) => {
+  if (!rec || !rec.blob) return;
+  setCustomMusic(rec.blob);
+  app.customTrack = { name: rec.name };
+  useCustomMusic(app.save.settings.musicSource === 'custom');
+  if (app.mode === 'settings' || app.mode === 'credits') renderScreen();
+});
 
 // Exposed for automated UI checks.
 window.__cyberdeck = app;

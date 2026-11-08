@@ -5,6 +5,7 @@ export const DEFAULT_SETTINGS = {
   music: 6, // 0-10
   sfx: 8, // 0-10
   timerMode: 'immediate', // 'immediate' | 'firstPick'
+  musicSource: 'original', // 'original' | 'custom'
 };
 
 const blank = () => ({ unlocked: 1, best: {}, perks: {}, settings: { ...DEFAULT_SETTINGS } });

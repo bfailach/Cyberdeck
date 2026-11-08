@@ -3,3 +3,9 @@ dist/
 release/
 .DS_Store
 *.log
+# never commit music files
+*.mp3
+*.ogg
+*.wav
+*.flac
+*.m4a
