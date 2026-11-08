@@ -12,7 +12,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "node --test test/*.test.js",
-    "app": "vite build && electron ."
+    "app": "node scripts/ensure-electron.cjs && vite build && electron .",
+    "electron:install": "node scripts/ensure-electron.cjs"
   },
   "dependencies": {
     "@fontsource/rajdhani": "^5.0.0"
