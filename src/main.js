@@ -80,7 +80,9 @@ function showScreen(mode) {
   if (mode === 'levels') app.sel = Math.min(app.save.unlocked, MAX_LEVEL) - 1;
   $('menu').classList.toggle('hidden', !['main', 'levels', 'settings'].includes(mode));
   $('skills').classList.toggle('hidden', mode !== 'skills');
-  $('prompts').classList.toggle('hidden', mode === 'skills');
+  $('menuBg').classList.toggle('hidden', !['main', 'levels', 'settings'].includes(mode));
+  $('menu').classList.toggle('on-main', mode === 'main');
+  $('prompts').classList.toggle('hidden', mode === 'skills' || mode === 'main');
   setMusicMode('menu');
   renderScreen();
   renderPrompts();
@@ -106,33 +108,60 @@ function mainItems() {
   return items;
 }
 
+const VERSION = '0.3.0';
+
 function renderMain() {
   const host = $('menuContent');
   const items = mainItems();
   const stars = pointsEarned(app.save);
+  const pts = pointsAvailable(app.save);
   const bestTotal = Object.values(app.save.best).reduce((s, b) => s + b.score, 0);
   host.className = 'menu-wrap main-menu';
   host.innerHTML = `
-    <div class="mm-left">
-      <div class="menu-tag">// NETRUNNER TRAINING MODULE</div>
-      <h1>BREACH<br/>PROTOCOL</h1>
-      <div class="mm-list" id="mmList"></div>
+    <div class="mm-logo">
+      <div class="mm-word" data-text="CYBERDECK">CYBERDECK</div>
+      <div class="mm-tagline"><span>B R E A C H</span><i></i><span>P R O T O C O L</span></div>
     </div>
-    <div class="mm-right">
-      <div class="mm-stat"><span>LEVELS UNLOCKED</span><b>${Math.min(app.save.unlocked, MAX_LEVEL)}/${MAX_LEVEL}</b></div>
-      <div class="mm-stat"><span>STARS</span><b>${stars}/${MAX_LEVEL * 3}</b></div>
-      <div class="mm-stat"><span>PERK POINTS</span><b>${pointsAvailable(app.save)}</b></div>
-      <div class="mm-stat"><span>TOTAL BEST SCORE</span><b>${bestTotal}</b></div>
-      <div class="mm-note">Earn 1 perk point for every star. Spend them in the skill tree.</div>
-    </div>`;
+    <div class="mm-list" id="mmList"></div>
+    <div class="mm-stats">LVL ${String(Math.min(app.save.unlocked, MAX_LEVEL)).padStart(2, '0')}/${MAX_LEVEL} &nbsp;·&nbsp; ★ ${stars}/${MAX_LEVEL * 3} &nbsp;·&nbsp; BEST ${bestTotal}</div>
+    <div class="mm-version"><small>TRN_CDECK_000${VERSION.replace(/\./g, '')}</small>${VERSION}</div>
+    <div class="mm-rewards" id="mmRewards">
+      <span class="rw-count">${pts}</span><span class="rw-label">Perk Points</span>
+      <span class="rw-mini">SYSTEM INPUT 12</span><span class="rw-bars"><i></i><i></i><i></i></span>
+      <span class="rw-sep"></span><span class="rw-icon">◩</span><span class="rw-sep"></span>
+      <span class="rw-data">0F3A99C0E1 4721B<br/>NC-77AC03B9 D_00<br/>SYS_TRN_A // ENABLE</span>
+    </div>
+    <div class="mm-select"><kbd>ENTER</kbd> Select</div>`;
   const list = $('mmList');
   items.forEach((it, i) => {
-    const row = el('div', `mm-item${i === app.sel ? ' sel' : ''}`,
-      `<span class="mm-label">${it.label}</span><span class="mm-sub${it.badge ? ' badge' : ''}">${it.sub}</span>`);
+    const sel = i === app.sel;
+    const row = el('div', `mm-item${sel ? ' sel' : ''}`,
+      `<span class="mm-label">${it.label}</span>` +
+      (sel ? `<span class="mm-chip"><b></b></span><span class="mm-sub${it.badge ? ' badge' : ''}">${it.sub || ''}</span><span class="mm-glyph">▚▞<br/>▞▚</span>` : ''));
     row.addEventListener('mouseenter', () => { if (app.sel !== i) { app.sel = i; sfx.hover(); renderMain(); } });
     row.addEventListener('click', () => { sfx.select(); it.act(); });
     list.append(row);
   });
+  $('mmRewards').addEventListener('click', () => { sfx.select(); showScreen('skills'); });
+}
+
+function paintMenuBackdrop() {
+  const dust = $('mmDust');
+  for (let i = 0; i < 26; i++) {
+    const d = el('i');
+    const size = 2 + Math.random() * 6;
+    Object.assign(d.style, {
+      left: `${560 + Math.random() * 900}px`, top: `${300 + Math.random() * 420}px`,
+      width: `${size}px`, height: `${size}px`, opacity: (0.3 + Math.random() * 0.6).toFixed(2),
+      filter: `blur(${(Math.random() * 2).toFixed(1)}px)`, animationDelay: `${(Math.random() * 6).toFixed(1)}s`,
+    });
+    dust.append(d);
+  }
+  const hex = '0123456789ABCDEF';
+  const rnd = (n) => Array.from({ length: n }, () => hex[Math.floor(Math.random() * 16)]).join('');
+  let txt = '';
+  for (let r = 0; r < 34; r++) txt += `${rnd(4)} ${rnd(2)}&nbsp;&nbsp;${r % 3 ? rnd(4) : '&nbsp;&nbsp;&nbsp;&nbsp;'}<br/>`;
+  $('mmPanelData').innerHTML = txt;
 }
 
 function renderLevels() {
@@ -152,7 +181,7 @@ function renderLevels() {
   for (let L = 1; L <= MAX_LEVEL; L++) {
     const locked = L > app.save.unlocked;
     const best = app.save.best[L];
-    const stars = best ? '★'.repeat(best.stars) + '☆'.repeat(3 - best.stars) : locked ? 'LOCKED' : '☆☆☆';
+    const stars = best ? '★'.repeat(best.stars) + `<span class="dim">${'★'.repeat(3 - best.stars)}</span>` : locked ? 'LOCKED' : '<span class="dim">★★★</span>';
     const cell = el('div', `lvl${locked ? ' locked' : ''}${app.sel === L - 1 ? ' sel' : ''}`,
       `${String(L).padStart(2, '0')}<small>${stars}</small>`);
     cell.addEventListener('mouseenter', () => { if (!locked && app.sel !== L - 1) { app.sel = L - 1; renderLevels(); sfx.hover(); } });
@@ -336,6 +365,7 @@ function startLevel(level, seed = randomSeed()) {
   app.resultInfo = null;
   $('menu').classList.add('hidden');
   $('skills').classList.add('hidden');
+  $('menuBg').classList.add('hidden');
   $('prompts').classList.remove('hidden');
   $('terminal').classList.add('hidden');
   $('matrix').classList.remove('hidden');
@@ -793,6 +823,7 @@ function frame(t) {
 
 fitStage();
 paintBackground();
+paintMenuBackdrop();
 // A sample puzzle sits behind the menus so the interface is visible from the start.
 app.breach = new Breach(generatePuzzle(1, 1));
 app.puzzle = app.breach.puzzle;

@@ -1,6 +1,6 @@
 {
   "name": "cyberdeck",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "description": "Breach Protocol practice game inspired by Cyberpunk 2077",
   "type": "module",
   "main": "electron/main.cjs",
