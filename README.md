@@ -12,7 +12,7 @@ It is a fan-made training tool. It uses original fonts, icons and artwork and is
 
 ## Play
 
-**Play in your browser:** https://bfailach.github.io/cyberdeck/ (published automatically from `main` by GitHub Actions).
+**Play in your browser:** https://bfailach.github.io/Cyberdeck/ (published automatically from `main` by GitHub Actions).
 
 Or run it locally:
 
