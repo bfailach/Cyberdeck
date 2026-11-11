@@ -9,6 +9,7 @@ function createWindow() {
     minWidth: 960,
     minHeight: 540,
     backgroundColor: '#05060c',
+    icon: path.join(__dirname, '..', 'build', process.platform === 'win32' ? 'icon.ico' : 'icon.png'),
     title: 'Cyberdeck — Breach Protocol Training',
     autoHideMenuBar: true,
     webPreferences: { contextIsolation: true, sandbox: true },

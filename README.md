@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="src/assets/brand/cyberdeck-wordmark-light.svg">
+    <img src="src/assets/brand/cyberdeck-wordmark-dark.svg" alt="cyberdeck" width="420">
+  </picture>
+</p>
+
 # Cyberdeck — Breach Protocol Training
 
 A desktop practice game for the Breach Protocol hacking minigame from Cyberpunk 2077 (patch 2.0+ rules).
@@ -74,7 +81,10 @@ Every puzzle is generated so that all daemons can be uploaded. A solver checks e
 src/engine/   rules, generator, solver, scoring, perks, level curve (pure JS, tested with node --test)
 src/ui/       styles, sound effects and the soundtrack sequencer (music.js)
 src/main.js   screens, input, game loop
+src/assets/brand/  logo (wordmark for dark/light backgrounds) and app icon, as SVG
 electron/     desktop window
+build/        app icons for the desktop build (icon.png, icon.ico, icon.icns)
+docs/         repository social preview image
 ```
 
 ## Roadmap

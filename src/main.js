@@ -3,6 +3,8 @@ import '@fontsource/rajdhani/500.css';
 import '@fontsource/rajdhani/600.css';
 import '@fontsource/rajdhani/700.css';
 import './ui/styles.css';
+import wordmarkSvg from './assets/brand/cyberdeck-wordmark-light.svg?raw';
+import wordmarkUrl from './assets/brand/cyberdeck-wordmark-light.svg';
 
 import { generatePuzzle } from './engine/generator.js';
 import { Breach } from './engine/breach.js';
@@ -124,8 +126,8 @@ function renderMain() {
   host.className = 'menu-wrap main-menu';
   host.innerHTML = `
     <div class="mm-logo">
-      <div class="mm-word" data-text="CYBERDECK">CYBERDECK</div>
-      <div class="mm-tagline"><span>B R E A C H</span><i></i><span>P R O T O C O L</span></div>
+      ${wordmarkSvg}
+      <div class="mm-tagline">BREACH PROTOCOL TRAINING</div>
     </div>
     <div class="mm-list" id="mmList"></div>
     <div class="mm-stats">LVL ${String(Math.min(app.save.unlocked, MAX_LEVEL)).padStart(2, '0')}/${MAX_LEVEL} &nbsp;·&nbsp; ★ ${stars}/${MAX_LEVEL * 3} &nbsp;·&nbsp; BEST ${bestTotal}</div>
@@ -314,7 +316,7 @@ function renderCredits() {
   host.innerHTML = `
     <div class="menu-box credits-box">
       <div class="menu-tag">// CREDITS</div>
-      <h1>CYBERDECK</h1>
+      <h1 class="cr-logo"><img src="${wordmarkUrl}" alt="cyberdeck" /></h1>
       <div class="cr-sub">Breach Protocol Training · v${VERSION}</div>
       <div class="cr-block"><span>CREATED BY</span><b>Bryan Failach</b></div>
       <div class="cr-block"><span>MUSIC</span>
@@ -322,7 +324,8 @@ function renderCredits() {
         ${app.customTrack ? `<b class="cr-custom">${escapeHtml(creditFor(app.customTrack.name))}${custom ? '' : ' (not playing)'}</b>
         <small>Played from a file on this computer, chosen by the player. All rights belong to their respective owners.</small>` : ''}
       </div>
-      <div class="cr-block"><span>FONT</span><b>Rajdhani — Indian Type Foundry (SIL Open Font License)</b></div>
+      <div class="cr-block"><span>FONTS</span><b>Rajdhani — Indian Type Foundry (SIL Open Font License)</b>
+        <b>Share Tech Mono — Carrois Type Design, used in the logo (SIL Open Font License)</b></div>
       <div class="cr-legal">Fan-made, non-commercial practice tool inspired by the Breach Protocol minigame in Cyberpunk 2077.
         Not affiliated with or endorsed by CD PROJEKT RED. Cyberpunk 2077 is a trademark of CD PROJEKT S.A.</div>
       <div class="menu-actions"><button class="cp-btn" id="crBack">BACK <kbd>ESC</kbd></button></div>
