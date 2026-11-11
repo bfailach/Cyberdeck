@@ -10,7 +10,7 @@ import { generatePuzzle } from './engine/generator.js';
 import { Breach } from './engine/breach.js';
 import { levelConfig, MAX_LEVEL } from './engine/levels.js';
 import { randomSeed } from './engine/rng.js';
-import { BRANCHES, computeMods, nextCost, perkById, pointsAvailable, pointsEarned } from './engine/perks.js';
+import { BRANCHES, computeMods, perkById, pointsAvailable, requirements, perksAreValid, levelInfo, starsTotal } from './engine/perks.js';
 import { loadSave, recordResult, resetProgress, writeSave } from './storage.js';
 import { sfx, startMusic, setMusicMode, setVolumes, toggleMute, isMuted, setCustomMusic, useCustomMusic } from './ui/audio.js';
 import { saveCustomTrack, loadCustomTrack, deleteCustomTrack, creditFor } from './musicStore.js';
@@ -47,6 +47,13 @@ const app = {
 };
 
 setVolumes(app.save.settings);
+
+// Saves from before the XP progression: refund perks that no longer fit the rules.
+if (!perksAreValid(app.save)) {
+  app.save.perks = {};
+  app.perkReset = true;
+  writeSave(app.save);
+}
 
 // ---------------------------------------------------------------- setup
 function fitStage() {
@@ -120,7 +127,8 @@ const VERSION = '0.4.0';
 function renderMain() {
   const host = $('menuContent');
   const items = mainItems();
-  const stars = pointsEarned(app.save);
+  const stars = starsTotal(app.save);
+  const lvInfo = levelInfo(app.save);
   const pts = pointsAvailable(app.save);
   const bestTotal = Object.values(app.save.best).reduce((s, b) => s + b.score, 0);
   host.className = 'menu-wrap main-menu';
@@ -130,7 +138,7 @@ function renderMain() {
       <div class="mm-tagline">BREACH PROTOCOL TRAINING</div>
     </div>
     <div class="mm-list" id="mmList"></div>
-    <div class="mm-stats">LVL ${String(Math.min(app.save.unlocked, MAX_LEVEL)).padStart(2, '0')}/${MAX_LEVEL} &nbsp;·&nbsp; ★ ${stars}/${MAX_LEVEL * 3} &nbsp;·&nbsp; BEST ${bestTotal}</div>
+    <div class="mm-stats">NETRUNNER LV ${lvInfo.level} &nbsp;·&nbsp; LEVEL ${String(Math.min(app.save.unlocked, MAX_LEVEL)).padStart(2, '0')}/${MAX_LEVEL} &nbsp;·&nbsp; ★ ${stars}/${MAX_LEVEL * 3} &nbsp;·&nbsp; ${bestTotal.toLocaleString('en-US')} XP</div>
     <div class="mm-version"><small>TRN_CDECK_000${VERSION.replace(/\./g, '')}</small>${VERSION}</div>
     <div class="mm-rewards" id="mmRewards">
       <span class="rw-count">${pts}</span><span class="rw-label">Perk Points</span>
@@ -336,6 +344,13 @@ function renderCredits() {
 function commitSettings() {
   writeSave(app.save);
   setVolumes(app.save.settings);
+
+// Saves from before the XP progression: refund perks that no longer fit the rules.
+if (!perksAreValid(app.save)) {
+  app.save.perks = {};
+  app.perkReset = true;
+  writeSave(app.save);
+}
 }
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -358,22 +373,28 @@ function renderSkills() {
   const selId = flat[app.sel];
   const perks = app.save.perks;
   const avail = pointsAvailable(app.save);
+  const lv = levelInfo(app.save);
 
   let rows = '';
   BRANCHES.forEach((b) => {
     const invested = b.perks.reduce((s, p) => s + (perks[p.id] || 0), 0);
     const maxTiers = b.perks.reduce((s, p) => s + p.tiers.length, 0);
     let cards = '';
-    b.perks.forEach((p) => {
+    b.perks.forEach((p, i) => {
       const owned = perks[p.id] || 0;
-      const cost = nextCost(perks, p.id);
-      const pips = p.tiers.map((_, i) => `<i class="${i < owned ? 'on' : ''}"></i>`).join('');
-      const state = cost == null ? 'maxed' : cost <= avail ? 'buyable' : 'locked';
-      cards += `<div class="perk ${state}${p.id === selId ? ' sel' : ''}" data-id="${p.id}">
-        <div class="perk-icon">${cost == null ? '✓' : '+'}</div>
+      const req = requirements(app.save, p.id);
+      if (i > 0) cards += `<i class="perk-link${req.unlocked || owned ? ' lit' : ''}"></i>`;
+      const pips = p.tiers.map((_, k) => `<i class="${k < owned ? 'on' : ''}"></i>`).join('');
+      const state = req.maxed ? 'maxed' : !req.unlocked && !owned ? 'locked' : req.affordable ? 'buyable' : 'pending';
+      const missing = req.list.find((x) => !x.met);
+      const foot = req.maxed ? 'MAXED'
+        : state === 'locked' ? `🔒 ${shortReq(missing.label)}`
+          : `${req.cost} PT${req.cost > 1 ? 'S' : ''}${req.affordable ? '' : ' · NEED MORE'}`;
+      cards += `<div class="perk ${state}${p.capstone ? ' capstone' : ''}${p.id === selId ? ' sel' : ''}" data-id="${p.id}">
+        <div class="perk-icon">${req.maxed ? '✓' : state === 'locked' ? '◆' : '+'}</div>
         <div class="perk-name">${p.name.toUpperCase()}</div>
         <div class="perk-pips">${pips}</div>
-        <div class="perk-cost">${cost == null ? 'MAXED' : `${cost} PT${cost > 1 ? 'S' : ''}`}</div>
+        <div class="perk-cost">${foot}</div>
       </div>`;
     });
     rows += `<div class="sk-row">
@@ -382,18 +403,25 @@ function renderSkills() {
       <div class="sk-cards">${cards}</div></div>`;
   });
 
-
+  const notice = app.perkReset
+    ? '<div class="sk-notice">Progression changed: your perks were refunded. Points now come from Netrunner levels.</div>' : '';
   host.innerHTML = `
     <div class="sk-top">
       <div class="sk-stat"><b>${avail}</b> PERK POINTS</div>
-      <div class="sk-stat dim"><b>${pointsEarned(app.save)}</b> STARS EARNED</div>
+      <div class="sk-stat dim"><b>${starsTotal(app.save)}</b> STARS</div>
       <div class="sk-tabs"><span class="tab">SKILL TREE</span></div>
-      <div class="sk-stat right">NETRUNNER</div>
+      <div class="sk-level">
+        <div class="sk-level-top"><span>NETRUNNER</span><b>LV ${lv.level}</b></div>
+        <div class="sk-xp"><i style="width:${(lv.progress * 100).toFixed(1)}%"></i></div>
+        <small>${lv.xp.toLocaleString('en-US')} / ${lv.next.toLocaleString('en-US')} XP</small>
+      </div>
     </div>
     <div class="sk-title"><span>⊕</span> NETRUNNER PERKS</div>
-    <div class="sk-head"><span>PERK BRANCH</span><span>PERKS</span></div>
+    <div class="sk-head"><span>PERK BRANCH</span><span>PERKS — EACH ONE UNLOCKS THE NEXT</span></div>
     <div class="sk-rows">${rows}</div>
     <div class="sk-detail" id="skDetail"></div>
+    ${notice}
+    <div class="sk-howto">XP = your best score on every level added together. Beat your bests to level up; each Netrunner level is worth 1 perk point.</div>
     <div class="sk-prompts">
       <span data-key="Enter"><kbd>ENTER</kbd> UNLOCK</span><span data-key="r"><kbd>R</kbd> REFUND ALL</span><span data-key="Escape"><kbd>ESC</kbd> BACK</span>
     </div>`;
@@ -408,20 +436,32 @@ function renderSkills() {
   });
 }
 
+/** Compact requirement text for a card: "LV 12", "36 STARS" or the perk name. */
+function shortReq(label) {
+  const m = label.match(/^Netrunner level (\d+)/);
+  if (m) return `LV ${m[1]}`;
+  return label.replace(/ tier \d+$/, '').toUpperCase();
+}
+
 function renderSkillDetail() {
   const id = skillGrid().flat()[app.sel];
   const p = perkById(id);
   const owned = app.save.perks[id] || 0;
+  const req = requirements(app.save, id);
   const tierList = p.tiers.map((t, i) =>
     `<li class="${i < owned ? 'have' : i === owned ? 'next' : ''}">${i < owned ? '✓' : `${t.cost} PT`} &nbsp; ${t.text}</li>`).join('');
-  $('skDetail').innerHTML = `<div class="sk-detail-name">${p.name.toUpperCase()}</div><ul>${tierList}</ul>`;
+  const reqList = req.list.map((r) => `<li class="${r.met ? 'met' : 'unmet'}">${r.met ? '✓' : '✗'} ${r.label}</li>`).join('');
+  $('skDetail').innerHTML = `
+    <div class="sk-detail-name">${p.name.toUpperCase()}${p.capstone ? ' <span class="cap">CAPSTONE</span>' : ''}</div>
+    <div class="sk-detail-cols"><ul>${tierList}</ul><ul class="sk-req"><li class="hd">REQUIRES</li>${reqList}</ul></div>`;
 }
 
 function buyPerk() {
   const id = skillGrid().flat()[app.sel];
-  const cost = nextCost(app.save.perks, id);
-  if (cost == null || cost > pointsAvailable(app.save)) { sfx.denied(); renderSkills(); return; }
+  const req = requirements(app.save, id);
+  if (!req.ok) { sfx.denied(); renderSkills(); return; }
   app.save.perks[id] = (app.save.perks[id] || 0) + 1;
+  app.perkReset = false;
   writeSave(app.save);
   sfx.buy();
   renderSkills();
@@ -744,7 +784,12 @@ function endBreach() {
   app.mode = 'result';
   setMusicMode('result');
   const r = b.result;
+  const before = levelInfo(app.save);
   app.resultInfo = recordResult(app.save, app.level, r);
+  const after = levelInfo(app.save);
+  app.resultInfo.xpGain = after.xp - before.xp;
+  app.resultInfo.levelsGained = after.level - before.level;
+  app.resultInfo.level = after.level;
   const good = r.uploaded > 0;
   good ? sfx.success() : sfx.fail();
 
@@ -789,7 +834,8 @@ function renderScore() {
   const notes = [];
   if (info.isBest && r.total > 0) notes.push('NEW BEST'); else notes.push(`BEST ${best?.score ?? 0}`);
   if (info.unlockedNew) notes.push(`LEVEL ${app.level + 1} UNLOCKED`);
-  if (info.newStars) notes.push(`+${info.newStars} PERK POINT${info.newStars > 1 ? 'S' : ''}`);
+  if (info.xpGain > 0) notes.push(`+${info.xpGain} XP`);
+  if (info.levelsGained > 0) notes.push(`NETRUNNER LV ${info.level} · +${info.levelsGained} PERK POINT${info.levelsGained > 1 ? 'S' : ''}`);
   host.innerHTML =
     `<div class="score-row"><span class="stars">${stars}</span><span class="best">${notes.join(' · ')}</span></div>` +
     row('Daemons uploaded', `${r.uploaded}/${app.puzzle.daemons.length} · +${r.daemonPoints}`) +

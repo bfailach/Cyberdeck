@@ -347,8 +347,8 @@ kbd { font-family: var(--font); font-size: 12px; font-weight: 700; border: 1px s
 .sk-bar { grid-column: 2; height: 3px; background: rgba(255,255,255,.12); margin: 8px 0 6px; }
 .sk-bar i { display: block; height: 100%; background: #f2f2f2; }
 .sk-branch small { grid-column: 2; font-size: 13px; color: #c98a86; }
-.sk-cards { display: flex; gap: 14px; margin-left: 6px; }
-.perk { position: relative; width: 236px; height: 100px; background: var(--sk-box); border: 1px solid #5c1a1e; cursor: pointer; padding: 12px 14px 10px 64px;
+.sk-cards { display: flex; align-items: center; gap: 0; margin-left: 6px; }
+.perk { position: relative; width: 232px; height: 100px; background: var(--sk-box); border: 1px solid #5c1a1e; cursor: pointer; padding: 12px 14px 10px 64px;
   clip-path: polygon(0 0, 100% 0, 100% 80%, calc(100% - 12px) 100%, 0 100%); }
 .perk-icon { position: absolute; left: 14px; top: 26px; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center;
   font-size: 26px; font-weight: 700; color: #2c0e12; background: var(--sk-dim); }
@@ -446,3 +446,33 @@ kbd { font-family: var(--font); font-size: 12px; font-weight: 700; border: 1px s
 @media (prefers-reduced-motion: reduce) {
   .mm-bg, .mm-bg * { animation: none !important; }
 }
+
+/* ---------- skill tree: chains, locks, level ---------- */
+.perk-link { position: relative; width: 22px; height: 2px; background: rgba(255,95,88,.25); flex: none; }
+.perk-link::after { content: ''; position: absolute; right: -1px; top: -4px; border: 5px solid transparent; border-left: 6px solid rgba(255,95,88,.35); border-right: 0; }
+.perk-link.lit { background: var(--sk-gold); box-shadow: 0 0 6px rgba(245,195,68,.6); }
+.perk-link.lit::after { border-left-color: var(--sk-gold); }
+.perk.locked { opacity: .42; filter: saturate(.4); }
+.perk.locked .perk-icon { background: #3a1418; color: #8a2c2c; font-size: 15px; }
+.perk.locked .perk-cost { color: #c98a86; font-size: 12px; letter-spacing: .5px; }
+.perk.pending .perk-cost { color: #ff8a84; }
+.perk.capstone { border-color: #8a6a1e; background: linear-gradient(135deg, #2c0e12 60%, #3a2a0c); }
+.perk.capstone .perk-name { color: #ffe3a3; }
+.perk.capstone.locked { border-color: #5c1a1e; }
+.sk-level { margin-left: auto; width: 260px; }
+.sk-level-top { display: flex; justify-content: space-between; align-items: baseline; color: var(--sk-red); font-size: 16px; letter-spacing: 1px; }
+.sk-level-top b { font-size: 26px; color: #ffd7d3; font-weight: 600; }
+.sk-xp { height: 4px; background: rgba(255,95,88,.18); margin: 2px 0 3px; }
+.sk-xp i { display: block; height: 100%; background: #5ef6ff; box-shadow: 0 0 8px rgba(94,246,255,.6); }
+.sk-level small { font-size: 12px; color: #c98a86; letter-spacing: .5px; }
+.sk-detail { width: 900px; left: 350px; }
+.sk-detail-name .cap { font-size: 12px; color: var(--sk-gold); border: 1px solid var(--sk-gold); padding: 1px 6px; margin-left: 8px; vertical-align: middle; }
+.sk-detail-cols { display: flex; gap: 40px; }
+.sk-detail-cols ul:first-child { flex: 1; }
+.sk-req { width: 300px; }
+.sk-req li.hd { font-size: 12px; letter-spacing: 1px; color: var(--sk-dim); }
+.sk-req li.met { color: var(--sk-gold); }
+.sk-req li.unmet { color: #ff8a84; }
+.sk-notice { position: absolute; left: 350px; top: 776px; width: 900px; font-size: 14px; color: #5ef6ff; }
+.sk-howto { position: absolute; left: 60px; bottom: 36px; width: 760px; font-size: 13px; color: #a8706c; }
+.perk-cost { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

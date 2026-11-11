@@ -64,7 +64,7 @@ export class Breach {
       dt -= used;
       if (dt <= 0) return;
     }
-    this.timeLeft = Math.max(0, this.timeLeft - dt);
+    this.timeLeft = Math.max(0, this.timeLeft - dt * (this.mods.timeScale ?? 1));
     if (this.timeLeft === 0) this.finish('timeout');
   }
 

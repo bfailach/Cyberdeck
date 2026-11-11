@@ -55,16 +55,19 @@ Uploading every daemon unlocks the next level.
 ## Menus
 Main menu: **Continue** (your highest unlocked level), **Select level**, **Skill tree**, **Settings** (music and effects volume, soundtrack, your own music file, timer mode, reset progress), **Credits** and **Quit** (desktop app only).
 
-## Skill tree
-Each star you earn on a level (your best per level) is worth 1 perk point. Spend points in three branches:
+## Progression and skill tree
+**XP** is the sum of your best score on every level, so replaying a level only adds XP when you beat your own best; there is nothing to farm.
+XP raises your **Netrunner level**, and every level-up gives **1 perk point**. Each level needs more XP than the last
+(cumulative XP for level *n* = 600·(n−1) + 10·(n−1)²): about 8 points after your first five levels, about 40 at full mastery.
 
-| Branch | Perks |
+Each branch is a **chain**: a perk needs the one before it, a minimum Netrunner level, and capstones also need stars.
+The whole tree costs 69 points, more than a normal run earns, so you choose a build. Press **R** to refund everything.
+
+| Branch | Chain (cost per tier · requirement) |
 |---|---|
-| Breach | Extended Uplink (+5/+10/+15 s), Buffer Expansion (+1/+2 slots), Overclocked Uplink (time bonus ×1.5) |
-| Daemons | Datamine Mastery (daemon points +10/20/30%), Clean Execution (optimal bonus 300), Sequence Scanner (marks codes that advance a daemon) |
-| Assists | Hint Cache (+1/+2 hints), Rollback Buffer (+1/+2 undos), Cryo Loop (+1 freeze, 8 s freeze), Light Touch (assists cost 5%) |
-
-Press **R** in the tree to refund every point and rebuild your perks.
+| Breach | Extended Uplink +5/+10/+15 s (2/3/4) → Overclocked Uplink, time bonus ×1.5 (3 · LV 6) → Buffer Expansion +1/+2 slots (4/6 · LV 12) → **Time Dilation**, timer 20% slower (7 · LV 24, 36★) |
+| Daemons | Datamine Mastery +10/20/30% (2/3/4) → Sequence Scanner (3 · LV 5) → Clean Execution, optimal bonus 300 (3 · LV 10) → **Daemon Overload**, all-daemons bonus 500 (7 · LV 22, 36★) |
+| Assists | Hint Cache +1/+2 (1/2) → Rollback Buffer +1/+2 undos (2/3 · LV 3) → Cryo Loop +1 freeze, 8 s (2/3 · LV 8) → **Light Touch**, assists cost 5% (5 · LV 18, 24★) |
 
 ## Music and sound
 "Black ICE" is an original dark industrial track written for this game (148 BPM, E Phrygian: distorted kick, reese bass, industrial clanks, low "braam" hits and palm-muted power-chord chugs). It is generated live in code (WebAudio), so there are no audio files and no licensing to worry about. It is muffled in the menus and opens up fully during a breach.
