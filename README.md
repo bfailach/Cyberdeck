@@ -67,7 +67,7 @@ Each star you earn on a level (your best per level) is worth 1 perk point. Spend
 Press **R** in the tree to refund every point and rebuild your perks.
 
 ## Music and sound
-"Black ICE" is an original dark industrial track written for this game (148 BPM, E Phrygian: distorted kick, reese bass, metallic percussion, distorted lead). It is generated live in code (WebAudio), so there are no audio files and no licensing to worry about. It is muffled in the menus and opens up fully during a breach.
+"Black ICE" is an original dark industrial track written for this game (148 BPM, E Phrygian: distorted kick, reese bass, industrial clanks, low "braam" hits and palm-muted power-chord chugs). It is generated live in code (WebAudio), so there are no audio files and no licensing to worry about. It is muffled in the menus and opens up fully during a breach.
 Sound effects (clicks, data sweeps, glitches, thumps) are synthesized the same way, in `src/ui/sfx.js`.
 
 **Using your own track:** Settings → *Load music file* lets you pick an audio file from your computer (for example a track from the official Cyberpunk 2077 soundtrack you own). The file stays on your machine (browser storage) and is never added to this repository. Switch between it and Black ICE with *Soundtrack*. The Credits screen credits the track; "The Rebel Path" is recognized automatically (P.T. Adamczyk, Cyberpunk 2077 Original Score, © CD PROJEKT S.A.).

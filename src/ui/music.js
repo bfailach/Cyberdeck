@@ -1,10 +1,10 @@
 // "Black ICE" — an original dark industrial / cyberpunk track for Cyberdeck, sequenced live with WebAudio.
 // 148 BPM, E Phrygian. Distorted kick, detuned "reese" bass with a moving filter, metallic percussion,
-// harsh minor stabs and a distorted lead. 32-bar loop:
+// low "braam" hits and palm-muted power-chord chugs through a cabinet-style EQ. 32-bar loop:
 //   bars  0–3   intro      filtered bass, ticking hats, riser
-//   bars  4–11  drop 1     full kit, rolling offbeat bass, stabs
+//   bars  4–11  drop 1     full kit, rolling offbeat bass, braam hits
 //   bars 12–15  breakdown  drone, filtered bass, snare roll into the drop
-//   bars 16–27  drop 2     everything + lead riff
+//   bars 16–27  drop 2     everything + distorted power-chord chugs
 //   bars 28–31  outro      kit and bass, filter closing back down
 
 const BPM = 148;
@@ -17,11 +17,8 @@ const midi = (n) => 440 * Math.pow(2, (n - 69) / 12);
 const ROOTS = [28, 28, 29, 28, 28, 28, 31, 30];
 // Rolling bass: offbeat 16ths, octave jumps on accents (0 = rest, n = semitones above root + 1).
 const BASS = [0, 1, 1, 0, 0, 1, 13, 1, 0, 1, 1, 0, 0, 13, 1, 1];
-// Lead riff (2 bars of 16ths, 0 = rest), E Phrygian: E F G A B C D
-const LEAD = [
-  64, 0, 64, 65, 0, 64, 0, 62, 64, 0, 0, 67, 0, 65, 64, 0,
-  64, 0, 64, 65, 0, 67, 0, 69, 70, 0, 69, 0, 67, 65, 0, 62,
-];
+// Guitar rhythm (1 = palm-muted chug, 2 = open accent, 0 = rest).
+const CHUG = [2, 0, 1, 1, 0, 1, 1, 0, 1, 1, 2, 0, 1, 0, 1, 1];
 
 export function createTrack(ctx, out) {
   // ---------- shared processing ----------
@@ -81,12 +78,16 @@ export function createTrack(ctx, out) {
   lfo.connect(lfoAmt).connect(bassFilter.frequency);
   lfo.start();
 
-  // Lead bus: distortion + delay.
-  const leadDrive = ctx.createWaveShaper(); leadDrive.curve = curve(5);
-  const leadTone = ctx.createBiquadFilter(); leadTone.type = 'lowpass'; leadTone.frequency.value = 2600; leadTone.Q.value = 3;
-  const leadGain = ctx.createGain(); leadGain.gain.value = 0.07;
-  leadDrive.connect(leadTone).connect(leadGain);
-  leadGain.connect(duck); leadGain.connect(delay); leadGain.connect(reverb);
+  // Guitar bus: heavy distortion into a speaker-cabinet style EQ (no raw synth edge).
+  const gtrDrive = ctx.createWaveShaper(); gtrDrive.curve = curve(9); gtrDrive.oversample = '4x';
+  const gtrHp = ctx.createBiquadFilter(); gtrHp.type = 'highpass'; gtrHp.frequency.value = 95;
+  const gtrMid = ctx.createBiquadFilter(); gtrMid.type = 'peaking'; gtrMid.frequency.value = 900; gtrMid.Q.value = 0.9; gtrMid.gain.value = 4;
+  const gtrScoop = ctx.createBiquadFilter(); gtrScoop.type = 'peaking'; gtrScoop.frequency.value = 450; gtrScoop.Q.value = 1.2; gtrScoop.gain.value = -3;
+  const gtrCab1 = ctx.createBiquadFilter(); gtrCab1.type = 'lowpass'; gtrCab1.frequency.value = 3400; gtrCab1.Q.value = 0.7;
+  const gtrCab2 = ctx.createBiquadFilter(); gtrCab2.type = 'lowpass'; gtrCab2.frequency.value = 4200; gtrCab2.Q.value = 0.5;
+  const gtrGain = ctx.createGain(); gtrGain.gain.value = 0.085;
+  gtrDrive.connect(gtrHp).connect(gtrScoop).connect(gtrMid).connect(gtrCab1).connect(gtrCab2).connect(gtrGain);
+  gtrGain.connect(duck); gtrGain.connect(reverb);
 
   // Drone for the breakdown.
   const drone = ctx.createGain(); drone.gain.value = 0;
@@ -115,33 +116,47 @@ export function createTrack(ctx, out) {
     duck.gain.setValueAtTime(0.35, t);
     duck.gain.linearRampToValueAtTime(1, t + STEP * 2.6);
   }
+  // Snare: layered clap transients + body + saturated noise, no tonal oscillator.
+  const snareDrive = ctx.createWaveShaper(); snareDrive.curve = curve(2.2);
+  const snareBus = ctx.createGain(); snareBus.gain.value = 1;
+  snareDrive.connect(snareBus); snareBus.connect(duck); snareBus.connect(reverb);
   function snare(t, vol = 0.5) {
-    const n = ctx.createBufferSource(); n.buffer = noiseBuf;
-    const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1700; f.Q.value = 0.7;
-    const g = ctx.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
-    const d = ctx.createWaveShaper(); d.curve = curve(2.5);
-    n.connect(f).connect(d).connect(g); g.connect(duck); g.connect(reverb);
-    n.start(t, Math.random() * 0.5); n.stop(t + 0.25);
-    const o = ctx.createOscillator(); const og = ctx.createGain();
-    o.type = 'triangle'; o.frequency.setValueAtTime(220, t); o.frequency.exponentialRampToValueAtTime(130, t + 0.08);
-    og.gain.setValueAtTime(vol * 0.7, t); og.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
-    o.connect(og).connect(duck); o.start(t); o.stop(t + 0.12);
+    // three quick clap transients
+    [0, 0.009, 0.019].forEach((o, i) => {
+      const n = ctx.createBufferSource(); n.buffer = noiseBuf;
+      const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1300; f.Q.value = 1.1;
+      const g = ctx.createGain();
+      const len = i === 2 ? 0.2 : 0.012;
+      g.gain.setValueAtTime(vol * (i === 2 ? 0.9 : 0.7), t + o); g.gain.exponentialRampToValueAtTime(0.001, t + o + len);
+      n.connect(f).connect(g).connect(snareDrive); n.start(t + o, Math.random() * 0.5); n.stop(t + o + len + 0.02);
+    });
+    // body
+    const b = ctx.createBufferSource(); b.buffer = noiseBuf;
+    const bf = ctx.createBiquadFilter(); bf.type = 'bandpass'; bf.frequency.value = 230; bf.Q.value = 1.4;
+    const bg = ctx.createGain(); bg.gain.setValueAtTime(vol * 1.1, t); bg.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+    b.connect(bf).connect(bg).connect(snareDrive); b.start(t, Math.random() * 0.5); b.stop(t + 0.1);
   }
+  // Hats: darker band-passed noise with human-ish velocity variation.
   function hat(t, open, vol) {
     const n = ctx.createBufferSource(); n.buffer = noiseBuf;
-    const f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = open ? 7000 : 9000;
-    const g = ctx.createGain(); const len = open ? 0.16 : 0.03;
-    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + len);
-    n.connect(f).connect(g).connect(duck); n.start(t, Math.random() * 0.5); n.stop(t + len + 0.01);
+    const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = open ? 6200 : 7400; f.Q.value = 0.9;
+    const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 4200;
+    const g = ctx.createGain(); const len = open ? 0.14 : 0.022 + Math.random() * 0.012;
+    const v = vol * 0.75 * (0.75 + Math.random() * 0.4);
+    g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.001, t + len);
+    n.connect(f).connect(hp).connect(g).connect(duck); n.start(t, Math.random() * 0.5); n.stop(t + len + 0.01);
   }
-  // Metallic percussion: noise through high-Q inharmonic band-passes.
+  // Industrial clank: struck metal pipe (low-Q, low-mid resonances, saturated, roomy).
+  const clankDrive = ctx.createWaveShaper(); clankDrive.curve = curve(3);
+  const clankBus = ctx.createGain(); clankBus.gain.value = 1;
+  clankDrive.connect(clankBus); clankBus.connect(duck); clankBus.connect(reverb);
   function metal(t, vol) {
-    [1, 1.41, 1.93].forEach((r, i) => {
+    [430, 610, 880, 1330].forEach((fq, i) => {
       const n = ctx.createBufferSource(); n.buffer = noiseBuf;
-      const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1180 * r; f.Q.value = 30;
-      const g = ctx.createGain(); g.gain.setValueAtTime(vol * (1 - i * 0.25), t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
-      n.connect(f).connect(g); g.connect(duck); g.connect(reverb);
-      n.start(t, Math.random() * 0.5); n.stop(t + 0.2);
+      const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = fq * (0.97 + Math.random() * 0.06); f.Q.value = 9;
+      const g = ctx.createGain(); g.gain.setValueAtTime(vol * 2.2 * (1 - i * 0.18), t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.12 - i * 0.015);
+      n.connect(f).connect(g).connect(clankDrive);
+      n.start(t, Math.random() * 0.5); n.stop(t + 0.14);
     });
   }
   function bass(t, note, len) {
@@ -157,26 +172,32 @@ export function createTrack(ctx, out) {
     const sg = ctx.createGain(); sg.gain.value = 0.9; s.connect(sg).connect(g);
     s.start(t); s.stop(t + len + 0.01);
   }
-  // Harsh minor stab (with the Phrygian flat 2 for tension).
-  function stab(t, root) {
-    const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.Q.value = 5;
-    f.frequency.setValueAtTime(4200, t); f.frequency.exponentialRampToValueAtTime(500, t + 0.16);
-    const g = ctx.createGain(); g.gain.setValueAtTime(0.11, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
-    const d = ctx.createWaveShaper(); d.curve = curve(2.2);
-    f.connect(d).connect(g); g.connect(duck); g.connect(reverb); g.connect(delay);
-    for (const iv of [24, 27, 31, 37]) {
-      const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = midi(root + iv); o.detune.value = Math.random() * 12 - 6;
-      o.connect(f); o.start(t); o.stop(t + 0.22);
+  // Cinematic "braam": low, swelling, dark — replaces bright synth stabs.
+  function braam(t, root, len) {
+    const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.Q.value = 2.5;
+    f.frequency.setValueAtTime(380, t); f.frequency.exponentialRampToValueAtTime(1500, t + 0.25); f.frequency.exponentialRampToValueAtTime(420, t + len);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.16, t + 0.05); g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    const d = ctx.createWaveShaper(); d.curve = curve(3);
+    f.connect(d).connect(g); g.connect(duck); g.connect(reverb);
+    for (const [iv, det] of [[12, -9], [12, 9], [19, -5], [24, 4]]) {
+      const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = midi(root + iv); o.detune.value = det;
+      o.connect(f); o.start(t); o.stop(t + len + 0.02);
     }
   }
-  function lead(t, note) {
+  // Power chord (root, fifth, octave) through the guitar bus. Muted = short, darker chug.
+  function chord(t, root, len, muted) {
     const g = ctx.createGain();
-    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(1, t + 0.008);
-    g.gain.setValueAtTime(1, t + STEP * 0.8); g.gain.linearRampToValueAtTime(0, t + STEP * 1.1);
-    g.connect(leadDrive);
-    for (const [type, det] of [['sawtooth', -8], ['square', 8]]) {
-      const o = ctx.createOscillator(); o.type = type; o.frequency.value = midi(note); o.detune.value = det;
-      o.connect(g); o.start(t); o.stop(t + STEP * 1.15);
+    const pm = ctx.createBiquadFilter(); pm.type = 'lowpass'; pm.frequency.value = muted ? 1300 : 5000;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(1, t + 0.004);
+    g.gain.setValueAtTime(1, t + len * 0.7); g.gain.exponentialRampToValueAtTime(0.001, t + len);
+    pm.connect(g).connect(gtrDrive);
+    for (const iv of [0, 7, 12]) {
+      for (const det of [-7, 6]) {
+        const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = midi(root + iv); o.detune.value = det + Math.random() * 3;
+        const og = ctx.createGain(); og.gain.value = iv === 12 ? 0.5 : 0.8;
+        o.connect(og).connect(pm); o.start(t); o.stop(t + len + 0.02);
+      }
     }
   }
   function riser(t, bars) {
@@ -239,13 +260,15 @@ export function createTrack(ctx, out) {
       if (step) bass(t, root + (step - 1), STEP * (brk ? 3.5 : 0.95));
     }
 
-    // Stabs.
-    if ((drop1 || drop2) && (i === 0 || i === 6 || (bar % 2 === 1 && i === 10))) stab(t, root);
+    // Braam hits on the downbeat every two bars.
+    if ((drop1 || drop2) && i === 0 && bar % 2 === 0) braam(t, root, STEP * 14);
 
-    // Lead.
+    // Guitar: palm-muted chugs locked to the kick, open power chords on accents (drop 2).
     if (drop2) {
-      const note = LEAD[(bar % 2) * 16 + i];
-      if (note) lead(t, note + (bar >= 24 ? 12 : 0));
+      const gr = root + 12; // E2 range
+      const hit = CHUG[i];
+      if (hit === 1) chord(t, gr, STEP * 0.85, true);
+      else if (hit === 2) chord(t, gr, STEP * (bar >= 24 ? 3.8 : 1.8), false);
     }
   }
 
