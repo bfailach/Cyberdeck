@@ -98,7 +98,7 @@ export function useCustomMusic(on) {
 /** 'menu' muffles the soundtrack, 'breach' opens it up. */
 export function setMusicMode(mode) {
   if (!ctx) return;
-  const f = mode === 'breach' ? 16000 : mode === 'result' ? 3000 : 1100;
+  const f = mode === 'breach' ? 16000 : mode === 'result' ? 3500 : 1900;
   musicFilter.frequency.setTargetAtTime(f, ctx.currentTime, 0.6);
 }
 

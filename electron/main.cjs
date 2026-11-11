@@ -6,6 +6,7 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1600,
     height: 900,
+    useContentSize: true, // the game area itself is 1600x900, not the window frame
     minWidth: 960,
     minHeight: 540,
     backgroundColor: '#05060c',
@@ -15,6 +16,7 @@ function createWindow() {
     webPreferences: { contextIsolation: true, sandbox: true },
   });
   Menu.setApplicationMenu(null);
+  win.setAspectRatio(16 / 9); // keep the game filling the whole window when resizing
   if (process.env.VITE_DEV_SERVER_URL) win.loadURL(process.env.VITE_DEV_SERVER_URL);
   else win.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
   win.webContents.on('before-input-event', (_e, input) => {

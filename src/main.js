@@ -51,7 +51,7 @@ setVolumes(app.save.settings);
 // ---------------------------------------------------------------- setup
 function fitStage() {
   const s = Math.min(window.innerWidth / 1600, window.innerHeight / 900);
-  $('stage').style.transform = `scale(${s})`;
+  $('stage').style.transform = `scale(${s}) translate(-50%, -50%)`;
 }
 window.addEventListener('resize', fitStage);
 
@@ -115,7 +115,7 @@ function mainItems() {
   return items;
 }
 
-const VERSION = '0.3.0';
+const VERSION = '0.4.0';
 
 function renderMain() {
   const host = $('menuContent');
@@ -154,13 +154,13 @@ function renderMain() {
 
 function paintMenuBackdrop() {
   const dust = $('mmDust');
-  for (let i = 0; i < 26; i++) {
+  for (let i = 0; i < 40; i++) {
     const d = el('i');
     const size = 2 + Math.random() * 6;
     Object.assign(d.style, {
       left: `${560 + Math.random() * 900}px`, top: `${300 + Math.random() * 420}px`,
       width: `${size}px`, height: `${size}px`, opacity: (0.3 + Math.random() * 0.6).toFixed(2),
-      filter: `blur(${(Math.random() * 2).toFixed(1)}px)`, animationDelay: `${(Math.random() * 6).toFixed(1)}s`,
+      filter: `blur(${(Math.random() * 2).toFixed(1)}px)`, animationDelay: `${(-Math.random() * 11).toFixed(1)}s`, animationDuration: `${(9 + Math.random() * 6).toFixed(1)}s`,
     });
     dust.append(d);
   }
@@ -224,7 +224,7 @@ function settingsRows() {
     {
       label: 'SOUNDTRACK',
       value: s.musicSource === 'custom' && app.customTrack
-        ? `◂ YOUR FILE: ${escapeHtml(shorten(app.customTrack.name, 34))} ▸` : '◂ NEON UPLINK (ORIGINAL) ▸',
+        ? `◂ YOUR FILE: ${escapeHtml(shorten(app.customTrack.name, 34))} ▸` : '◂ BLACK ICE (ORIGINAL) ▸',
       adjust: () => {
         if (!app.customTrack) { pickMusicFile(); return; }
         s.musicSource = s.musicSource === 'custom' ? 'original' : 'custom';
@@ -268,7 +268,7 @@ function renderSettings() {
         r.adjust(e.clientX > rect.left + rect.width * 0.75 ? 1 : -1);
         commitSettings();
       } else r.act();
-      renderSettings();
+      if (app.mode === 'settings') renderSettings();
     });
     list.append(row);
   });
@@ -320,7 +320,7 @@ function renderCredits() {
       <div class="cr-sub">Breach Protocol Training · v${VERSION}</div>
       <div class="cr-block"><span>CREATED BY</span><b>Bryan Failach</b></div>
       <div class="cr-block"><span>MUSIC</span>
-        <b>"Neon Uplink" — original track made for Cyberdeck${custom ? ' (not playing)' : ''}</b>
+        <b>"Black ICE" — original track made for Cyberdeck${custom ? ' (not playing)' : ''}</b>
         ${app.customTrack ? `<b class="cr-custom">${escapeHtml(creditFor(app.customTrack.name))}${custom ? '' : ' (not playing)'}</b>
         <small>Played from a file on this computer, chosen by the player. All rights belong to their respective owners.</small>` : ''}
       </div>
@@ -395,7 +395,7 @@ function renderSkills() {
     <div class="sk-rows">${rows}</div>
     <div class="sk-detail" id="skDetail"></div>
     <div class="sk-prompts">
-      <span><kbd>ENTER</kbd> UNLOCK</span><span><kbd>R</kbd> REFUND ALL</span><span><kbd>ESC</kbd> BACK</span>
+      <span data-key="Enter"><kbd>ENTER</kbd> UNLOCK</span><span data-key="r"><kbd>R</kbd> REFUND ALL</span><span data-key="Escape"><kbd>ESC</kbd> BACK</span>
     </div>`;
 
   renderSkillDetail();
@@ -713,9 +713,17 @@ function renderTimer() {
   panel.classList.toggle('waiting', !b.started && !b.over && app.mode === 'breach');
 }
 
+// Key prompts double as buttons: clicking one sends that key.
+const KEYMAP = { ESC: 'Escape', ENTER: 'Enter', M: 'm', R: 'r', N: 'n' };
+function pressKey(key) { window.dispatchEvent(new KeyboardEvent('keydown', { key })); }
+document.addEventListener('click', (e) => {
+  const chip = e.target.closest('[data-key]');
+  if (chip) pressKey(chip.dataset.key);
+});
+
 function renderPrompts() {
   const host = $('prompts');
-  const P = (keys, label) => `<span class="p">${keys.map((k) => `<kbd>${k}</kbd>`).join('')} ${label}</span>`;
+  const P = (keys, label) => `<span class="p"${KEYMAP[keys[0]] ? ` data-key="${KEYMAP[keys[0]]}"` : ''}>${keys.map((k) => `<kbd>${k}</kbd>`).join('')} ${label}</span>`;
   const sound = P(['M'], isMuted() ? 'SOUND OFF' : 'SOUND');
   let html = '';
   if (app.mode === 'breach') {
