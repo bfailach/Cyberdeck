@@ -9,13 +9,6 @@
   <strong>Breach Protocol training environment, modelled on the Cyberpunk 2077 patch 2.0 hacking minigame.</strong>
 </p>
 
-<p align="center">
-  <a href="https://bfailach.github.io/Cyberdeck/"><img alt="Play online" src="https://img.shields.io/badge/play-bfailach.github.io%2FCyberdeck-1ee38c?style=flat-square"></a>
-  <a href="https://github.com/bfailach/Cyberdeck/actions/workflows/deploy-pages.yml"><img alt="Deploy to GitHub Pages" src="https://img.shields.io/github/actions/workflow/status/bfailach/Cyberdeck/deploy-pages.yml?branch=main&label=deploy&style=flat-square"></a>
-  <img alt="Version" src="https://img.shields.io/badge/version-0.4.0-d0ed57?style=flat-square">
-  <img alt="Platforms" src="https://img.shields.io/badge/platforms-web%20%7C%20desktop%20(Electron)-5ef6ff?style=flat-square">
-</p>
-
 ---
 
 Cyberdeck reproduces the Breach Protocol interface and rules from Cyberpunk 2077 as a standalone application, so the minigame can be practised outside the game. Every puzzle is procedurally generated and verified solvable, scored against the solver's optimal solution, and tied into a 20-level difficulty curve and a Netrunner progression system. It runs in any modern browser and as an Electron desktop application.
