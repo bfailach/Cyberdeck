@@ -12,6 +12,10 @@ It is a fan-made training tool. It uses original fonts, icons and artwork and is
 
 ## Play
 
+**Play in your browser:** https://bfailach.github.io/cyberdeck/ (published automatically from `main` by GitHub Actions).
+
+Or run it locally:
+
 ```bash
 npm install
 npm run dev     # play in the browser at http://localhost:5173
